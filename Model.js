@@ -71,6 +71,19 @@ function dishLabel(index) {
   return "Zusatz"
 }
 
+// Which dishes a day should render. Filtering to vegetarian keeps each dish's
+// original line number, because the icon is picked from that position -- drop it
+// and the surviving dish would be drawn as though it were the meat option.
+function visibleDishes(day, vegetarianOnly) {
+  var dishes = (day && day.dishes) || []
+  var rows = []
+  for (var i = 0; i < dishes.length; i++) rows.push({ text: dishes[i], index: i })
+  if (!vegetarianOnly) return rows
+  var veg = []
+  for (var j = 0; j < rows.length; j++) if (rows[j].index >= 1) veg.push(rows[j])
+  return veg
+}
+
 function truncate(text, max) {
   var s = String(text || "")
   if (!(max > 0) || s.length <= max) return s
@@ -134,7 +147,7 @@ function barLabel(menu, now, maxChars) {
   return truncate(dishes[0], maxChars)
 }
 
-function tooltipText(menu, now) {
+function tooltipText(menu, now, vegetarianOnly) {
   if (menu.days.length === 0) return "WartheMahl · Speisekarte"
   var index = todayIndex(menu.days, now)
   if (index < 0) {
@@ -142,9 +155,10 @@ function tooltipText(menu, now) {
     return note !== "" ? "WartheMahl · " + note : "WartheMahl · " + menu.weekLabel
   }
   var day = menu.days[index]
-  var dishes = day.dishes || []
+  var rows = visibleDishes(day, vegetarianOnly === true)
+  if (!rows.length) return day.weekday + " · keine vegetarische Option"
   var parts = []
-  for (var i = 0; i < dishes.length; i++) parts.push(truncate(dishes[i], 60))
+  for (var i = 0; i < rows.length; i++) parts.push(truncate(rows[i].text, 60))
   return day.weekday + " · " + parts.join("  │  ")
 }
 
@@ -161,6 +175,7 @@ if (typeof module !== "undefined") {
     dishIcon: dishIcon,
     dishLabel: dishLabel,
     truncate: truncate,
+    visibleDishes: visibleDishes,
     relativeAge: relativeAge,
     statusLine: statusLine,
     weekNote: weekNote,

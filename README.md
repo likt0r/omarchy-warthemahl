@@ -60,17 +60,24 @@ WartheMahl und werden nur angezeigt, nicht mitgeliefert.
 | Aktion | Wirkung |
 |---|---|
 | Linksklick auf das Icon | Speisekarte öffnen / schließen |
+| Schalter oben rechts | Nur vegetarische Gerichte zeigen |
 | Rechtsklick | Neu laden (erzwingt einen Abruf, ignoriert den Cache) |
 | Mittelklick | PDF der Woche öffnen |
 | `↑` / `↓` | Zwischen den Tagen navigieren |
 | `Enter` | PDF öffnen |
 | `r` | Neu laden |
 | `p` | PDF öffnen |
+| `v` | Vegetarier-Filter umschalten |
 | `w` | warthemahl.de im Browser öffnen |
 | `Esc` | Schließen |
 | `Tab` | Zum nächsten Bar-Panel wechseln |
 
 Der Tooltip am Bar-Icon zeigt die heutigen Gerichte, ohne dass man klicken muss.
+
+Der Schalter im Kopf des Panels blendet die Fleisch- und Fischgerichte aus.
+Die Einstellung wird in `shell.json` gespeichert, gilt also auch nach einem
+Neustart und wirkt ebenso auf den Tooltip am Bar-Icon. Tage ohne vegetarische
+Option sagen das ausdrücklich, statt stumm leer zu bleiben.
 
 Pro Tag listet die Seite zwei Gerichte: das Tagesgericht (Besteck-Icon, bei Fisch
 ein Fisch-Icon) und die vegetarische Variante (Blatt-Icon). Diese Reihenfolge ist
@@ -103,8 +110,11 @@ Cache: `${XDG_CACHE_HOME:-~/.cache}/omarchy/warthemahl-menu.json`
 In `~/.config/omarchy/shell.json` am Eintrag des Widgets:
 
 ```json
-{ "id": "likt0r.warthemahl", "refreshIntervalSec": 3600 }
+{ "id": "likt0r.warthemahl", "refreshIntervalSec": 3600, "vegetarianOnly": false }
 ```
+
+`vegetarianOnly` (Standard `false`) entspricht dem Schalter im Panel — das
+Umschalten dort schreibt genau diesen Wert zurück.
 
 `refreshIntervalSec` (Standard 3600) bestimmt, wie alt der Cache sein darf, bevor
 beim Öffnen neu geladen wird. Ein erzwungenes Neuladen (Rechtsklick, `r`) umgeht
@@ -130,7 +140,8 @@ o.bind("SUPER CTRL", "M", "Speisekarte", "omarchy-shell likt0r.warthemahl toggle
 ```bash
 omarchy-shell likt0r.warthemahl toggle    # Panel umschalten
 omarchy-shell likt0r.warthemahl refresh   # Neu laden erzwingen
-omarchy-shell likt0r.warthemahl status    # Heutige Gerichte auf stdout
+omarchy-shell likt0r.warthemahl status     # Heutige Gerichte auf stdout
+omarchy-shell likt0r.warthemahl vegetarian # Vegetarier-Filter umschalten
 ```
 
 ## Tests

@@ -38,6 +38,7 @@ Panel {
   readonly property int todayIndex: Model.todayIndex(root.menu.days, root.now)
   readonly property string weekNote: Model.weekNote(root.menu, root.now)
   readonly property bool hasDays: root.menu.days.length > 0
+  readonly property bool vegetarianOnly: setting("vegetarianOnly", false) === true
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   // The bar exposes foreground/urgent but no accent -- it reads the palette
@@ -71,6 +72,22 @@ Panel {
     var empty = Model.emptyMenu()
     empty.error = message
     root.menu = empty
+  }
+
+  // Persisted the way the clock persists its format: applied locally so the
+  // panel reacts on the click itself, then written back to shell.json through
+  // the bar, which returns the same value.
+  function setVegetarianOnly(value) {
+    var entry = { id: root.moduleName }
+    for (var key in root.settings) if (key !== "id") entry[key] = root.settings[key]
+    entry.vegetarianOnly = value === true
+    root.settings = entry
+    if (root.bar && root.bar.shell && typeof root.bar.shell.updateEntryInline === "function")
+      root.bar.shell.updateEntryInline(root.moduleName, entry)
+  }
+
+  function toggleVegetarian() {
+    root.setVegetarianOnly(!root.vegetarianOnly)
   }
 
   function openPdf() {
@@ -179,7 +196,11 @@ Panel {
     function hide(): void { root.close() }
     function toggle(): void { root.toggle() }
     function refresh(): string { root.refresh(true); return "ok" }
-    function status(): string { return Model.tooltipText(root.menu, new Date()) }
+    function vegetarian(): string {
+      root.toggleVegetarian()
+      return root.vegetarianOnly ? "on" : "off"
+    }
+    function status(): string { return Model.tooltipText(root.menu, new Date(), root.vegetarianOnly) }
   }
 
   BarIconButton {
@@ -187,7 +208,7 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     text: "󰩰"
-    tooltipText: Model.tooltipText(root.menu, root.now)
+    tooltipText: Model.tooltipText(root.menu, root.now, root.vegetarianOnly)
 
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.RightButton) root.refresh(true)
@@ -221,6 +242,7 @@ Panel {
         if (key === "r" || key === "R") root.refresh(true)
         else if (key === "p" || key === "P") root.openPdf()
         else if (key === "w" || key === "W") root.openSite()
+        else if (key === "v" || key === "V") root.toggleVegetarian()
       }
 
       // Status and actions are pinned to the bottom edge rather than left at
@@ -307,19 +329,48 @@ Panel {
           width: panelFlick.width
           spacing: Style.space(12)
 
-          PanelHero {
+          Item {
+            id: header
             width: parent.width
-            title: "WartheMahl"
-            meta: root.menu.weekLabel !== "" ? root.menu.weekLabel : "Speisekarte der Woche"
-            detail: root.menu.stale ? "OFFLINE" : ""
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-            iconComponent: Component {
-              Text {
-                text: "󰩰"
-                color: root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.display
+            implicitHeight: hero.implicitHeight
+
+            // Inside iconComponent and trailingControl, `root` resolves to
+            // PanelHero rather than this Panel -- those Components are
+            // instantiated in the hero's scope. Panel state is reached through
+            // `header`, the hero's own colors through `hero`.
+            readonly property bool vegOnly: root.vegetarianOnly
+            function toggleVeg() { root.toggleVegetarian() }
+
+            PanelHero {
+              id: hero
+              width: parent.width
+              title: "WartheMahl"
+              meta: root.menu.weekLabel !== "" ? root.menu.weekLabel : "Speisekarte der Woche"
+              detail: root.menu.stale ? "OFFLINE" : ""
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              iconComponent: Component {
+                Text {
+                  text: "󰩰"
+                  color: hero.foreground
+                  font.family: hero.fontFamily
+                  font.pixelSize: Style.font.display
+                }
+              }
+
+              trailingControl: Component {
+                ToggleSwitch {
+                  id: vegSwitch
+                  checked: header.vegOnly
+                  foreground: hero.foreground
+                  onToggled: header.toggleVeg()
+
+                  PanelToolTip {
+                    visible: vegSwitch.containsMouse
+                    text: header.vegOnly ? "Alle Gerichte zeigen (v)" : "Nur vegetarisch (v)"
+                    fontFamily: hero.fontFamily
+                  }
+                }
               }
             }
           }
@@ -457,7 +508,7 @@ Panel {
       }
 
       Repeater {
-        model: card.day ? card.day.dishes : []
+        model: Model.visibleDishes(card.day, root.vegetarianOnly)
 
         // Wrapped dish text drives the row height off contentHeight rather
         // than implicitHeight: the glyph column is fixed, the text column is
@@ -465,7 +516,6 @@ Panel {
         Item {
           id: dishRow
           required property var modelData
-          required property int index
 
           width: cardBody.width
           height: Math.max(dishGlyph.implicitHeight, dishText.contentHeight)
@@ -474,9 +524,9 @@ Panel {
             id: dishGlyph
             anchors.left: parent.left
             anchors.top: parent.top
-            text: Model.dishIcon(dishRow.index, dishRow.modelData)
-            color: dishRow.index === 0 ? root.foreground : root.accent
-            opacity: dishRow.index === 0 ? 0.75 : 0.9
+            text: Model.dishIcon(dishRow.modelData.index, dishRow.modelData.text)
+            color: dishRow.modelData.index === 0 ? root.foreground : root.accent
+            opacity: dishRow.modelData.index === 0 ? 0.75 : 0.9
             font.family: root.fontFamily
             font.pixelSize: Style.font.iconSmall
           }
@@ -487,14 +537,24 @@ Panel {
             anchors.leftMargin: Style.space(20)
             anchors.right: parent.right
             anchors.top: parent.top
-            text: String(dishRow.modelData || "")
+            text: String(dishRow.modelData.text || "")
             color: root.foreground
-            opacity: dishRow.index === 0 ? 1.0 : 0.82
+            opacity: dishRow.modelData.index === 0 ? 1.0 : 0.82
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
             wrapMode: Text.WordWrap
           }
         }
+      }
+
+      Text {
+        visible: root.vegetarianOnly && Model.visibleDishes(card.day, true).length === 0
+        width: cardBody.width
+        text: "Keine vegetarische Option"
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        font.italic: true
       }
     }
   }

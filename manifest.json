@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "likt0r.warthemahl",
   "name": "WartheMahl",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Benjamin Werner",
   "license": "MIT",
   "description": "Die Wochenspeisekarte von WartheMahl in der Omarchy-Bar: ein Klick auf das Besteck-Icon zeigt alle Gerichte der Woche, der heutige Tag hervorgehoben.",
@@ -14,12 +14,13 @@
   },
   "barWidget": {
     "displayName": "WartheMahl",
-    "description": "Gerichte der Woche von warthemahl.de, mit PDF- und Website-Verknüpfung.",
+    "description": "Gerichte der Woche von warthemahl.de, mit Vegetarier-Filter sowie PDF- und Website-Verknüpfung.",
     "category": "Info",
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
-      "refreshIntervalSec": 3600
+      "refreshIntervalSec": 3600,
+      "vegetarianOnly": false
     },
     "schema": [
       {
@@ -30,6 +31,12 @@
         "max": 86400,
         "step": 60,
         "defaultValue": 3600
+      },
+      {
+        "key": "vegetarianOnly",
+        "type": "boolean",
+        "label": "Nur vegetarische Gerichte zeigen",
+        "defaultValue": false
       }
     ]
   }

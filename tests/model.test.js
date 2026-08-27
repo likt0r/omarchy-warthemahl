@@ -123,3 +123,32 @@ test("the helper the panel shells out to is present and executable", () => {
   // non-zero exit and no output, which is miserable to debug from a screenshot.
   assert.ok(fs.statSync(helper).mode & 0o111, "bin/warthemahl-menu is not executable")
 })
+
+test("the vegetarian filter keeps each dish's line number, so icons stay honest", () => {
+  const day = { weekday: "Montag", dishes: ["Boulette", "Gebackener Hirtenkäse"] }
+
+  assert.deepEqual(Model.visibleDishes(day, false), [
+    { text: "Boulette", index: 0 },
+    { text: "Gebackener Hirtenkäse", index: 1 },
+  ])
+  // Filtered down to one dish, it must still carry index 1 -- an index of 0
+  // would draw the vegetarian option with the meat icon.
+  assert.deepEqual(Model.visibleDishes(day, true), [{ text: "Gebackener Hirtenkäse", index: 1 }])
+  assert.equal(Model.dishIcon(Model.visibleDishes(day, true)[0].index, ""), Model.ICON_VEG)
+})
+
+test("a day with no vegetarian option filters to nothing rather than to the meat dish", () => {
+  assert.deepEqual(Model.visibleDishes({ dishes: ["Gulasch"] }, true), [])
+  assert.deepEqual(Model.visibleDishes({}, true), [])
+  assert.deepEqual(Model.visibleDishes(null, false), [])
+})
+
+test("the bar tooltip follows the filter instead of contradicting the open panel", () => {
+  const monday = new Date(2026, 7, 24, 12, 0)
+  assert.match(Model.tooltipText(menu, monday, false), /Boulette/)
+  assert.doesNotMatch(Model.tooltipText(menu, monday, true), /Boulette/)
+  assert.match(Model.tooltipText(menu, monday, true), /Hirtenkäse/)
+
+  const meatOnly = { ...menu, days: [{ weekday: "Montag", date: "2026-08-24", dishes: ["Gulasch"] }] }
+  assert.match(Model.tooltipText(meatOnly, monday, true), /keine vegetarische Option/)
+})

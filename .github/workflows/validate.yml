@@ -1,0 +1,23 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Model and manifest tests
+        run: node --test tests/model.test.js
+      # -B keeps __pycache__ out of the checkout: inside a real plugin folder it
+      # makes the Omarchy shell's file watcher reload the plugin on every run.
+      - name: Parser tests against the captured page
+        run: python3 -B -m unittest discover -s tests

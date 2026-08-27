@@ -1,0 +1,4 @@
+# Python bytecode inside the plugin folder makes the shell's file watcher
+# reload the plugin on every test run -- keep it out of the checkout entirely.
+__pycache__/
+*.pyc

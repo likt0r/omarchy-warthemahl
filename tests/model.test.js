@@ -152,3 +152,26 @@ test("the bar tooltip follows the filter instead of contradicting the open panel
   const meatOnly = { ...menu, days: [{ weekday: "Montag", date: "2026-08-24", dishes: ["Gulasch"] }] }
   assert.match(Model.tooltipText(meatOnly, monday, true), /keine vegetarische Option/)
 })
+
+test("pointer hover is gated and released, so no row stays lit after the pointer leaves", () => {
+  const qml = fs.readFileSync(path.join(__dirname, "..", "Panel.qml"), "utf8")
+
+  // Only real pointer movement may move the highlight -- otherwise a row that
+  // slides under a resting cursor (filter toggle, refresh) steals it.
+  assert.match(qml, /PointerMoveGate\s*\{\s*\n\s*id: pointerGate/)
+  assert.match(qml, /if \(!pointerGate\.moved\(item, mouse\)\) return/)
+  // The gate has to be re-armed whenever the rows move under the pointer.
+  for (const hook of ["onVegetarianOnlyChanged", "onMenuChanged"]) {
+    assert.ok(qml.includes(`${hook}: pointerGate.reset()`), `${hook} must re-arm the gate`)
+  }
+  assert.match(qml, /pointerGate\.reset\(\)\s*\n\s*root\.dayIndex = root\.todayIndex/)
+
+  // Leaving a row must drop its highlight.
+  assert.match(qml, /onExited: root\.releaseDayCursor\(card\.rowIndex\)/)
+  // ...but only if the pointer owns it, and only once a same-frame move to the
+  // next row has settled.
+  assert.match(qml, /function releaseDayCursor\(index\) \{[\s\S]*?Qt\.callLater/)
+  assert.match(qml, /if \(root\.cursorFromPointer && root\.dayIndex === index\) root\.cursorActive = false/)
+  // A keyboard-chosen row must not be dropped by a stray pointer exit.
+  assert.match(qml, /function moveCursor\(dx, dy\) \{\s*\n\s*root\.cursorActive = true\s*\n\s*root\.cursorFromPointer = false/)
+})

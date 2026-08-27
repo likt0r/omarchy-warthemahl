@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "likt0r.warthemahl",
   "name": "WartheMahl",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "Benjamin Werner",
   "license": "MIT",
   "description": "Die Wochenspeisekarte von WartheMahl in der Omarchy-Bar: ein Klick auf das Besteck-Icon zeigt alle Gerichte der Woche, der heutige Tag hervorgehoben.",

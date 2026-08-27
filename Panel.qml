@@ -33,6 +33,9 @@ Panel {
   property date now: new Date()
   property int dayIndex: 0
   property bool cursorActive: false
+  // Whether the highlight came from the pointer. A keyboard-chosen row must
+  // not be dropped by a stray pointer exit.
+  property bool cursorFromPointer: false
 
   readonly property int refreshIntervalSec: Math.max(60, Number(setting("refreshIntervalSec", 3600)) || 3600)
   readonly property int todayIndex: Model.todayIndex(root.menu.days, root.now)
@@ -109,16 +112,32 @@ Panel {
 
   function moveCursor(dx, dy) {
     root.cursorActive = true
+    root.cursorFromPointer = false
     var count = root.menu.days.length
     if (count === 0 || dy === 0) return
     root.dayIndex = Math.max(0, Math.min(count - 1, root.dayIndex + dy))
     root.scrollCursorIntoView()
   }
 
-  function setDayCursor(index) {
+  // Pointer-driven highlight, gated the way the first-party list panels gate
+  // theirs: only real pointer movement may move the cursor. Toggling the
+  // vegetarian filter resizes every card, and an ungated hover would hand the
+  // highlight to whichever row happened to slide under a resting pointer.
+  function selectDayFromPointer(index, item, mouse) {
+    if (!pointerGate.moved(item, mouse)) return
     root.cursorActive = true
+    root.cursorFromPointer = true
     root.dayIndex = index
-    root.scrollCursorIntoView()
+  }
+
+  // Leaving a row drops its highlight, so the popup does not stay lit after the
+  // pointer has moved off it entirely. A row-to-row move fires this around the
+  // next row's enter, so the drop is deferred and only applies while this row
+  // still owns the cursor.
+  function releaseDayCursor(index) {
+    Qt.callLater(function() {
+      if (root.cursorFromPointer && root.dayIndex === index) root.cursorActive = false
+    })
   }
 
   function scrollCursorIntoView() {
@@ -145,13 +164,25 @@ Panel {
   onOpenedChanged: if (opened) {
     root.now = new Date()
     root.cursorActive = false
+    root.cursorFromPointer = false
+    pointerGate.reset()
     root.dayIndex = root.todayIndex >= 0 ? root.todayIndex : 0
     if (panelFlick) panelFlick.contentY = 0
     root.refresh(false)
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
+  // Rows resize under a resting pointer whenever the filter flips or fresh
+  // data lands; re-arm the gate so the row that slides under it stays put.
+  onVegetarianOnlyChanged: pointerGate.reset()
+  onMenuChanged: pointerGate.reset()
+
   Component.onCompleted: root.refresh(false)
+
+  PointerMoveGate {
+    id: pointerGate
+    referenceItem: panelFlick
+  }
 
   Process {
     id: fetchProc
@@ -232,7 +263,7 @@ Panel {
       id: keyCatcher
       anchors.fill: parent
       onMoveRequested: function(dx, dy) {
-        if (!root.cursorActive) { root.cursorActive = true; return }
+        if (!root.cursorActive) { root.cursorActive = true; root.cursorFromPointer = false; return }
         root.moveCursor(dx, dy)
       }
       onActivateRequested: root.openPdf()
@@ -451,10 +482,13 @@ Panel {
     implicitHeight: cardBody.implicitHeight + Style.space(14)
 
     MouseArea {
+      id: cardMouse
       anchors.fill: parent
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
-      onEntered: root.setDayCursor(card.rowIndex)
+      onEntered: root.selectDayFromPointer(card.rowIndex, card, { x: cardMouse.mouseX, y: cardMouse.mouseY })
+      onPositionChanged: function(mouse) { root.selectDayFromPointer(card.rowIndex, card, mouse) }
+      onExited: root.releaseDayCursor(card.rowIndex)
       onClicked: root.openPdf()
     }
 

@@ -32,6 +32,29 @@ Entfernen:
 omarchy plugin remove likt0r.warthemahl
 ```
 
+## Voraussetzungen
+
+- Omarchy 4.x (Quattro) mit der Quickshell-Shell
+- `python3` (nur Standardbibliothek, keine pip-Pakete)
+- `xdg-open` für die PDF- und Website-Buttons
+- Netzzugriff auf `warthemahl.de` — ohne Netz zeigt das Panel den letzten
+  zwischengespeicherten Stand
+
+Das Plugin schreibt ausschließlich seinen eigenen Cache nach
+`${XDG_CACHE_HOME:-~/.cache}/omarchy/warthemahl-menu.json`. Es verändert keine
+Konfiguration; die Platzierung in der Bar nimmt Omarchy beim `plugin add`
+selbst vor.
+
+**Inhaltliche Abhängigkeit:** Die Gerichte kommen aus der öffentlichen
+Speisekarten-Seite von WartheMahl. Ändert sich deren Seitenaufbau, muss der
+Parser nachgezogen werden (siehe *Tests*). Das Plugin fragt die Seite höchstens
+stündlich ab und cacht dazwischen.
+
+## Lizenz
+
+MIT, siehe [LICENSE](LICENSE). Die Speisekarten-Inhalte selbst gehören
+WartheMahl und werden nur angezeigt, nicht mitgeliefert.
+
 ## Bedienung
 
 | Aktion | Wirkung |
